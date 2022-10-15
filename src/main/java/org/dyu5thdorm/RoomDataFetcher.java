@@ -1,27 +1,26 @@
 package org.dyu5thdorm;
 
 import org.dyu5thdorm.models.LoginParameter;
+import org.dyu5thdorm.models.Room;
+import org.dyu5thdorm.models.Sex;
 import org.dyu5thdorm.models.Student;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class RoomDataFetcher {
     private static final String cookie;
     private static final String loginLink;
     private static final String roomDataLink;
     private static boolean loginStatus;
-    private static List<Student> studentsData;
 
     static {
         cookie = "PHPSESSID=ahpm4amhmd69e7vasddo11mbf0";
         loginLink = "http://163.23.1.52/dorm_muster/chk_login.php";
         roomDataLink = "http://163.23.1.52/dorm_muster/view_free_bad.php";
-        studentsData = new ArrayList<>();
     }
 
     private static void login(String id, String password) throws IOException {
@@ -39,7 +38,6 @@ public class RoomDataFetcher {
     private static Document getRoomData(LoginParameter l) throws IOException {
         if (!loginStatus) login(l.id(), l.password());
 
-
         return Jsoup.connect(roomDataLink)
                 .header("Cookie", cookie)
                 .data("s_smye", l.s_smye())
@@ -47,28 +45,42 @@ public class RoomDataFetcher {
                 .post();
     }
 
-    public static List<Student> getStudentData(LoginParameter l) throws IOException {
+    public static List<Room> getStudentData(LoginParameter l) throws IOException {
         Document document = getRoomData(l);
-        Elements tdField;
+        Elements tdField = document.getElementsByTag("td");
+        return roomDataGenerator(tdField);
+    }
 
-        tdField = document.getElementsByTag("td");
+    private static List<Room> roomDataGenerator(Elements tdField) {
+        List<Room> rooms = new ArrayList<>();
 
         for (int i = 11; i < tdField.size(); i+= 10) {
             String roomTag = tdField.get(i).text();
+
             if (roomTag.charAt(0) != '5') continue; // Diligence dorm filter
 
+            String major = tdField.get(i+2).text();
             String studentID = tdField.get(i+3).text();
             String name = tdField.get(i+4).text();
+            Sex sex = tdField.get(i+5).text().equals("1") ? Sex.MALE : Sex.FEMALE;
+            String citizenship = tdField.get(i+6).text();
 
-            if (studentID.isEmpty() || name.isEmpty()) continue; // check if is empty room
+            Room room;
 
-            Student student = new Student(roomTag, studentID, name);
-
-            if (!studentsData.contains(student)) {
-                studentsData.add(student);
+            if (studentID.isEmpty() || name.isEmpty()) { // empty room
+                room = new Room(roomTag, null);
+                rooms.add(room);
+                continue;
             }
+
+            room = new Room(
+                    roomTag,
+                    new Student(major, studentID, name, sex, citizenship)
+            );
+
+            rooms.add(room);
         }
 
-        return studentsData;
+        return rooms;
     }
 }
