@@ -2,7 +2,6 @@ package org.dyu5thdorm;
 
 import org.dyu5thdorm.models.LoginParameter;
 import org.dyu5thdorm.models.Room;
-import org.dyu5thdorm.models.Sex;
 import org.dyu5thdorm.models.Student;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -21,6 +20,12 @@ public class RoomDataFetcher {
         cookie = "PHPSESSID=ahpm4amhmd69e7vasddo11mbf0";
         loginLink = "http://163.23.1.52/dorm_muster/chk_login.php";
         roomDataLink = "http://163.23.1.52/dorm_muster/view_free_bad.php";
+    }
+
+    public static List<Room> getStudentData(LoginParameter l) throws IOException {
+        Document document = getRoomData(l);
+        Elements tdField = document.getElementsByTag("td");
+        return roomDataGenerator(tdField);
     }
 
     private static void login(String id, String password) throws IOException {
@@ -45,12 +50,6 @@ public class RoomDataFetcher {
                 .post();
     }
 
-    public static List<Room> getStudentData(LoginParameter l) throws IOException {
-        Document document = getRoomData(l);
-        Elements tdField = document.getElementsByTag("td");
-        return roomDataGenerator(tdField);
-    }
-
     private static List<Room> roomDataGenerator(Elements tdField) {
         List<Room> rooms = new ArrayList<>();
 
@@ -62,7 +61,7 @@ public class RoomDataFetcher {
             String major = tdField.get(i+2).text();
             String studentID = tdField.get(i+3).text();
             String name = tdField.get(i+4).text();
-            Sex sex = tdField.get(i+5).text().equals("1") ? Sex.MALE : Sex.FEMALE;
+            String sex = tdField.get(i+5).text().equals("1") ? "M" : "F";
             String citizenship = tdField.get(i+6).text();
 
             Room room;
@@ -75,7 +74,7 @@ public class RoomDataFetcher {
 
             room = new Room(
                     roomTag,
-                    new Student(major, studentID, name, sex, citizenship)
+                    new Student(studentID, name, sex, major, citizenship)
             );
 
             rooms.add(room);
