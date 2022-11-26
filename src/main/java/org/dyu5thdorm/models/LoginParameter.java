@@ -4,9 +4,7 @@ public record LoginParameter(String id, String password, String s_smye, String s
     @Override
     public String toString() {
         return "LoginParameter{" +
-                "id='" + id + '\'' +
-                ", password='" + password + '\'' +
-                ", s_smye='" + s_smye + '\'' +
+                "s_smye='" + s_smye + '\'' +
                 ", s_smty='" + s_smty + '\'' +
                 '}';
     }

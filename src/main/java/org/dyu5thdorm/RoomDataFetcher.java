@@ -22,7 +22,7 @@ public class RoomDataFetcher {
         roomDataLink = "http://163.23.1.52/dorm_muster/view_free_bad.php";
     }
 
-    public static List<Room> getStudentData(LoginParameter l) throws IOException {
+    public static List<Room> getData(LoginParameter l) throws IOException {
         Document document = getRoomData(l);
         Elements tdField = document.getElementsByTag("td");
         return roomDataGenerator(tdField);
