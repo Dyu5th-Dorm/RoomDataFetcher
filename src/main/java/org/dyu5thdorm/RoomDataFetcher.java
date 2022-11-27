@@ -1,6 +1,7 @@
 package org.dyu5thdorm;
 
-import org.dyu5thdorm.models.LoginParameter;
+import org.dyu5thdorm.models.Dormitory;
+import org.dyu5thdorm.models.DataFetchingParameter;
 import org.dyu5thdorm.models.Room;
 import org.dyu5thdorm.models.Student;
 import org.jsoup.Jsoup;
@@ -10,7 +11,10 @@ import org.jsoup.select.Elements;
 import java.io.IOException;
 import java.util.*;
 
-public class RoomDataFetcher {
+/**
+ * A web crawler library for obtaining Dormitory of DaYeh University room and student information.
+ */
+public final class RoomDataFetcher {
     private static final String cookie;
     private static final String loginLink;
     private static final String roomDataLink;
@@ -22,12 +26,36 @@ public class RoomDataFetcher {
         roomDataLink = "http://163.23.1.52/dorm_muster/view_free_bad.php";
     }
 
-    public static List<Room> getData(LoginParameter l) throws IOException {
-        Document document = getRoomData(l);
-        Elements tdField = document.getElementsByTag("td");
-        return roomDataGenerator(tdField);
+    /**
+     * To obtain diligent dormitory room and student information.
+     * @param d Login parameter and semester to be fetched.
+     * @return Diligent Dormitory room information (contains student information).
+     * @throws IOException Login failed.
+     */
+    public static List<Room> getData(DataFetchingParameter d) throws IOException {
+        return getData(d, Dormitory.DILIGENT);
     }
 
+    /**
+     * Same with <b>getData(DataFetchingParameter d)</b>, but this method can
+     * specify the desired dormitory information.
+     * @param d Login parameter and semester to be fetched.
+     * @param dormId The dormitory information to be fetched.
+     * @return Specify Dormitory room information (contains student information).
+     * @throws IOException Login Failed.
+     */
+    public static List<Room> getData(DataFetchingParameter d, char dormId) throws IOException {
+        Document document = getAllRoomsData(d);
+        Elements tdField = document.getElementsByTag("td");
+        return roomDataGenerator(tdField, dormId);
+    }
+
+    /**
+     * To login to dormitory data web.
+     * @param id id of data web.
+     * @param password id of data web.
+     * @throws IOException Login failed.
+     */
     private static void login(String id, String password) throws IOException {
         Jsoup.connect(loginLink)
                 .header("Cookie", cookie)
@@ -40,23 +68,45 @@ public class RoomDataFetcher {
         }
     }
 
-    private static Document getRoomData(LoginParameter l) throws IOException {
-        if (!loginStatus) login(l.id(), l.password());
+    /**
+     * Get all dormitories data.
+     * @param d Login parameter and semester to be fetched.
+     * @return All dormitories data.
+     * @throws IOException Login failed.
+     */
+    private static Document getAllRoomsData(DataFetchingParameter d) throws IOException {
+        if (!loginStatus) login(d.id(), d.password());
 
         return Jsoup.connect(roomDataLink)
                 .header("Cookie", cookie)
-                .data("s_smye", l.s_smye())
-                .data("s_smty", l.s_smty())
+                .data("s_smye", d.s_smye())
+                .data("s_smty", d.s_smty())
                 .post();
     }
 
+    /**
+     * Filter data from <b>getAllRoomsData(DataFetchingParameter d)</b> fetched.
+     * @param tdField Html element.
+     * @return Filtered data.
+     */
     private static List<Room> roomDataGenerator(Elements tdField) {
+        return roomDataGenerator(tdField, Dormitory.DILIGENT);
+    }
+
+    /**
+     * Same with <b>roomDataGenerator(Elements tdField)</b>, but this method can
+     * specify the desired dormitory information.
+     * @param tdField Html element.
+     * @param dormId The dormitory information to be fetched.
+     * @return Filtered data.
+     */
+    private static List<Room> roomDataGenerator(Elements tdField, char dormId) {
         List<Room> rooms = new ArrayList<>();
 
         for (int i = 11; i < tdField.size(); i+= 10) {
             String roomTag = tdField.get(i).text();
 
-            if (roomTag.charAt(0) != '5') continue; // Diligence dorm filter
+            if (roomTag.charAt(0) != dormId) continue;
 
             String major = tdField.get(i+2).text();
             String studentID = tdField.get(i+3).text();
