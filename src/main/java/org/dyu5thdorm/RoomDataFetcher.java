@@ -85,15 +85,6 @@ public final class RoomDataFetcher {
     }
 
     /**
-     * Filter data from <b>getAllRoomsData(DataFetchingParameter d)</b> fetched.
-     * @param tdField Html element.
-     * @return Filtered data.
-     */
-    private static List<Room> roomDataGenerator(Elements tdField) {
-        return roomDataGenerator(tdField, Dormitory.DILIGENT);
-    }
-
-    /**
      * Same with <b>roomDataGenerator(Elements tdField)</b>, but this method can
      * specify the desired dormitory information.
      * @param tdField Html element.
