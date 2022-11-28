@@ -1,4 +1,4 @@
-package org.dyu5thdorm.models;
+package org.dyu5thdorm.RoomDataFetcher.models;
 
 import java.util.Objects;
 

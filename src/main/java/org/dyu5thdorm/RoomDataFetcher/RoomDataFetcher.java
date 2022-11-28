@@ -1,9 +1,9 @@
-package org.dyu5thdorm;
+package org.dyu5thdorm.RoomDataFetcher;
 
-import org.dyu5thdorm.models.Dormitory;
-import org.dyu5thdorm.models.DataFetchingParameter;
-import org.dyu5thdorm.models.Room;
-import org.dyu5thdorm.models.Student;
+import org.dyu5thdorm.RoomDataFetcher.models.Dormitory;
+import org.dyu5thdorm.RoomDataFetcher.models.DataFetchingParameter;
+import org.dyu5thdorm.RoomDataFetcher.models.Room;
+import org.dyu5thdorm.RoomDataFetcher.models.Student;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
