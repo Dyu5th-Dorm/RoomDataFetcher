@@ -47,6 +47,13 @@ public final class RoomDataFetcher {
     public static List<Room> getData(DataFetchingParameter d, char dormId) throws IOException {
         Document document = getAllRoomsData(d);
         Elements tdField = document.getElementsByTag("td");
+
+        if (tdField.isEmpty()) {
+            loginStatus = false;
+            document = getAllRoomsData(d);
+            tdField = document.getElementsByTag("td");
+        }
+
         return roomDataGenerator(tdField, dormId);
     }
 
