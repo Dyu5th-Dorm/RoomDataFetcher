@@ -111,18 +111,20 @@ public final class RoomDataFetcher {
             String name = tdField.get(i+4).text();
             String sex = tdField.get(i+5).text().equals("1") ? "M" : "F";
             String citizenship = tdField.get(i+6).text();
+            String changeTime = tdField.get(i+9).text();
 
             Room room;
 
             if (studentID.isEmpty() || name.isEmpty()) { // empty room
-                room = new Room(roomTag, null);
+                room = new Room(roomTag, null, changeTime);
                 rooms.add(room);
                 continue;
             }
 
             room = new Room(
                     roomTag,
-                    new Student(studentID, name, sex, major, citizenship)
+                    new Student(studentID, name, sex, major, citizenship),
+                    changeTime
             );
 
             rooms.add(room);

@@ -34,5 +34,4 @@ public record Student(String studentId, String name, String sex, String major, S
                 Objects.equals(this.major, that.major) &&
                 Objects.equals(this.citizenship, that.citizenship);
     }
-
 }
