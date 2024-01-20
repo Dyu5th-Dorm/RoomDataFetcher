@@ -9,22 +9,19 @@ import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.*;
 
 /**
  * A web crawler library for obtaining Dormitory of DaYeh University room and student information.
  */
 public final class RoomDataFetcher {
-    private static final String cookie;
-    private static final String loginLink;
-    private static final String roomDataLink;
-    private static boolean loginStatus;
+    private static String cookie;
+    private static final String LOGIN_LINK = "http://163.23.1.52/dorm_muster/chk_login.php";
+    private static final String ROOM_DATA_LINK = "http://163.23.1.52/dorm_muster/view_free_bad.php";
+    private static LocalDateTime loginTime = LocalDateTime.now();
 
-    static {
-        cookie = "PHPSESSID=ahpm4amhmd69e7vasddo11mbf0";
-        loginLink = "http://163.23.1.52/dorm_muster/chk_login.php";
-        roomDataLink = "http://163.23.1.52/dorm_muster/view_free_bad.php";
-    }
 
     /**
      * To obtain diligent dormitory room and student information.
@@ -45,13 +42,18 @@ public final class RoomDataFetcher {
      * @throws IOException Login Failed.
      */
     public static List<Room> getData(DataFetchingParameter d, char dormId) throws IOException {
-        Document document = getAllRoomsData(d);
-        Elements tdField = document.getElementsByTag("td");
-
-        if (tdField.isEmpty()) {
-            loginStatus = false;
+        Document document;
+        try {
             document = getAllRoomsData(d);
-            tdField = document.getElementsByTag("td");
+        } catch (IOException e) {
+            // If login fails, rethrow the exception to indicate a failure
+            throw new IOException("Failed to login or fetch data", e);
+        }
+
+        Elements tdField = document.getElementsByTag("td");
+        if (tdField.isEmpty()) {
+            // Handle the case where no data is returned
+            throw new IOException("No data returned from the server");
         }
 
         return roomDataGenerator(tdField, dormId);
@@ -64,15 +66,20 @@ public final class RoomDataFetcher {
      * @throws IOException Login failed.
      */
     private static void login(String id, String password) throws IOException {
-        Jsoup.connect(loginLink)
+        // Generate a new session cookie for each login attempt
+        cookie = "PHPSESSID=" + UUID.randomUUID();
+        Document loginResponse = Jsoup.connect(LOGIN_LINK)
                 .header("Cookie", cookie)
                 .data("login_id", id)
                 .data("login_passwd", password)
                 .post();
 
-        if (!loginStatus) {
-            loginStatus = true;
-        }
+
+         if (loginResponse.text().length() > 9) {
+             throw new IOException("Login failed");
+         }
+
+        loginTime = LocalDateTime.now();
     }
 
     /**
@@ -82,9 +89,11 @@ public final class RoomDataFetcher {
      * @throws IOException Login failed.
      */
     private static Document getAllRoomsData(DataFetchingParameter d) throws IOException {
-        if (!loginStatus) login(d.id(), d.password());
+        LocalDateTime currentTime = LocalDateTime.now();
+        long differenceInMinutes = Duration.between(loginTime, currentTime).toMinutes();
+        if (differenceInMinutes >= 30) login(d.id(), d.password());
 
-        return Jsoup.connect(roomDataLink)
+        return Jsoup.connect(ROOM_DATA_LINK)
                 .header("Cookie", cookie)
                 .data("s_smye", d.s_smye())
                 .data("s_smty", d.s_smty())
