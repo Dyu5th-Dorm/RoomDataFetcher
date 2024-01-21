@@ -1,17 +1,19 @@
 package org.dyu5thdorm.RoomDataFetcher;
 
-import org.dyu5thdorm.RoomDataFetcher.models.Dormitory;
-import org.dyu5thdorm.RoomDataFetcher.models.DataFetchingParameter;
+import org.dyu5thdorm.RoomDataFetcher.models.LoginParameter;
 import org.dyu5thdorm.RoomDataFetcher.models.Room;
 import org.dyu5thdorm.RoomDataFetcher.models.Student;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
+
+import static org.dyu5thdorm.RoomDataFetcher.RoomDataField.*;
 
 /**
  * A web crawler library for obtaining Dormitory of DaYeh University room and student information.
@@ -20,31 +22,30 @@ public final class RoomDataFetcher {
     private static String cookie;
     private static final String LOGIN_LINK = "http://163.23.1.52/dorm_muster/chk_login.php";
     private static final String ROOM_DATA_LINK = "http://163.23.1.52/dorm_muster/view_free_bad.php";
-    private static LocalDateTime loginTime = LocalDateTime.now();
-
+    private static LocalDateTime loginTime;
 
     /**
      * To obtain diligent dormitory room and student information.
-     * @param d Login parameter and semester to be fetched.
+     * @param param Login parameter and semester to be fetched.
      * @return Diligent Dormitory room information (contains student information).
      * @throws IOException Login failed.
      */
-    public static List<Room> getData(DataFetchingParameter d) throws IOException {
-        return getData(d, Dormitory.DILIGENT);
+    public static List<Room> getData(LoginParameter param) throws IOException {
+        return getData(param, Dormitory.DILIGENT);
     }
 
     /**
      * Same with <b>getData(DataFetchingParameter d)</b>, but this method can
      * specify the desired dormitory information.
-     * @param d Login parameter and semester to be fetched.
-     * @param dormId The dormitory information to be fetched.
+     * @param param Login parameter and semester to be fetched.
+     * @param dormitory The dormitory information to be fetched.
      * @return Specify Dormitory room information (contains student information).
      * @throws IOException Login Failed.
      */
-    public static List<Room> getData(DataFetchingParameter d, char dormId) throws IOException {
+    public static List<Room> getData(LoginParameter param, Dormitory dormitory) throws IOException {
         Document document;
         try {
-            document = getAllRoomsData(d);
+            document = getAllRoomsData(param);
         } catch (IOException e) {
             // If login fails, rethrow the exception to indicate a failure
             throw new IOException("Failed to login or fetch data", e);
@@ -56,7 +57,7 @@ public final class RoomDataFetcher {
             throw new IOException("No data returned from the server");
         }
 
-        return roomDataGenerator(tdField, dormId);
+        return roomDataGenerator(tdField, dormitory);
     }
 
     /**
@@ -73,30 +74,29 @@ public final class RoomDataFetcher {
                 .data("login_id", id)
                 .data("login_passwd", password)
                 .post();
-
-
          if (loginResponse.text().length() > 9) {
              throw new IOException("Login failed");
          }
-
         loginTime = LocalDateTime.now();
     }
 
     /**
      * Get all dormitories data.
-     * @param d Login parameter and semester to be fetched.
+     *
+     * @param param Login parameter and semester to be fetched.
      * @return All dormitories data.
      * @throws IOException Login failed.
      */
-    private static Document getAllRoomsData(DataFetchingParameter d) throws IOException {
-        LocalDateTime currentTime = LocalDateTime.now();
-        long differenceInMinutes = Duration.between(loginTime, currentTime).toMinutes();
-        if (differenceInMinutes >= 30) login(d.id(), d.password());
+    private static Document getAllRoomsData(LoginParameter param) throws IOException {
+        if (loginTime == null || Duration.between(loginTime, LocalDateTime.now()).toMinutes() >= 30) {
+            login(param.id(), param.password());
+            loginTime = LocalDateTime.now();
+        }
 
         return Jsoup.connect(ROOM_DATA_LINK)
                 .header("Cookie", cookie)
-                .data("s_smye", d.s_smye())
-                .data("s_smty", d.s_smty())
+                .data("s_smye", param.s_smye())
+                .data("s_smty", param.s_smty())
                 .post();
     }
 
@@ -104,41 +104,42 @@ public final class RoomDataFetcher {
      * Same with <b>roomDataGenerator(Elements tdField)</b>, but this method can
      * specify the desired dormitory information.
      * @param tdField Html element.
-     * @param dormId The dormitory information to be fetched.
+     * @param dormitory The dormitory information to be fetched.
      * @return Filtered data.
      */
-    private static List<Room> roomDataGenerator(Elements tdField, char dormId) {
+    private static List<Room> roomDataGenerator(Elements tdField, Dormitory dormitory) {
         List<Room> rooms = new ArrayList<>();
+        for (int i = ROOM_TAG_INDEX.getValue(); i < tdField.size(); i += STEP_SIZE.getValue()) {
+            Element element = tdField.get(i);
+            String roomTag = element.text();
+            if (roomTag.isEmpty() || roomTag.charAt(0) != dormitory.getId()) continue;
 
-        for (int i = 11; i < tdField.size(); i+= 10) {
-            String roomTag = tdField.get(i).text();
+            Optional<Student> student = createStudentIfNotEmpty(tdField, i);
 
-            if (roomTag.charAt(0) != dormId) continue;
-
-            String major = tdField.get(i+2).text();
-            String studentID = tdField.get(i+3).text();
-            String name = tdField.get(i+4).text();
-            String sex = tdField.get(i+5).text().equals("1") ? "M" : "F";
-            String citizenship = tdField.get(i+6).text();
-            String changeTime = tdField.get(i+9).text();
-
-            Room room;
-
-            if (studentID.isEmpty() || name.isEmpty()) { // empty room
-                room = new Room(roomTag, null, changeTime);
-                rooms.add(room);
-                continue;
-            }
-
-            room = new Room(
-                    roomTag,
-                    new Student(studentID, name, sex, major, citizenship),
-                    changeTime
+            String changeTime = tdField.get(i + TIME_OFFSET.getValue()).text();
+            Room room = student.map(
+                    value -> new Room(roomTag, value, changeTime)
+            ).orElseGet(
+                    () -> new Room(roomTag, null, changeTime)
             );
 
             rooms.add(room);
         }
-
         return rooms;
+    }
+
+    private static Optional<Student> createStudentIfNotEmpty(Elements tdField, int index) {
+        String studentID = tdField.get(index + STUDENT_ID_OFFSET.getValue()).text();
+        String name = tdField.get(index + NAME_OFFSET.getValue()).text();
+
+        if (studentID.isEmpty() || name.isEmpty()) {
+            return Optional.empty();
+        }
+
+        String major = tdField.get(index + MAJOR_OFFSET.getValue()).text();
+        String sex = tdField.get(index + SEX_OFFSET.getValue()).text().equals("1") ? "M" : "F";
+        String citizenship = tdField.get(index + CITIZENSHIP_OFFSET.getValue()).text();
+
+        return Optional.of(new Student(studentID, name, sex, major, citizenship));
     }
 }
