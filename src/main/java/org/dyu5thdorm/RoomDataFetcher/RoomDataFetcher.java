@@ -1,7 +1,7 @@
 package org.dyu5thdorm.RoomDataFetcher;
 
+import org.dyu5thdorm.RoomDataFetcher.models.Bed;
 import org.dyu5thdorm.RoomDataFetcher.models.LoginParameter;
-import org.dyu5thdorm.RoomDataFetcher.models.Room;
 import org.dyu5thdorm.RoomDataFetcher.models.Student;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -30,7 +30,7 @@ public final class RoomDataFetcher {
      * @return Diligent Dormitory room information (contains student information).
      * @throws IOException Login failed.
      */
-    public static List<Room> getData(LoginParameter param) throws IOException {
+    public static List<Bed> getData(LoginParameter param) throws IOException {
         return getData(param, Dormitory.DILIGENT);
     }
 
@@ -42,7 +42,7 @@ public final class RoomDataFetcher {
      * @return Specify Dormitory room information (contains student information).
      * @throws IOException Login Failed.
      */
-    public static List<Room> getData(LoginParameter param, Dormitory dormitory) throws IOException {
+    public static List<Bed> getData(LoginParameter param, Dormitory dormitory) throws IOException {
         Document document;
         try {
             document = getAllRoomsData(param);
@@ -107,20 +107,20 @@ public final class RoomDataFetcher {
      * @param dormitory The dormitory information to be fetched.
      * @return Filtered data.
      */
-    private static List<Room> roomDataGenerator(Elements tdField, Dormitory dormitory) {
-        List<Room> rooms = new ArrayList<>();
+    private static List<Bed> roomDataGenerator(Elements tdField, Dormitory dormitory) {
+        List<Bed> rooms = new ArrayList<>();
         for (int i = ROOM_TAG_INDEX.getValue(); i < tdField.size(); i += STEP_SIZE.getValue()) {
             Element element = tdField.get(i);
-            String roomTag = element.text();
-            if (roomTag.isEmpty() || roomTag.charAt(0) != dormitory.getId()) continue;
+            String bedId = element.text();
+            if (bedId.isEmpty() || bedId.charAt(0) != dormitory.getId()) continue;
 
             Optional<Student> student = createStudentIfNotEmpty(tdField, i);
 
             String changeTime = tdField.get(i + TIME_OFFSET.getValue()).text();
-            Room room = student.map(
-                    value -> new Room(roomTag, value, changeTime)
+            Bed room = student.map(
+                    value -> new Bed(bedId, value, changeTime)
             ).orElseGet(
-                    () -> new Room(roomTag, null, changeTime)
+                    () -> new Bed(bedId, null, changeTime)
             );
 
             rooms.add(room);
